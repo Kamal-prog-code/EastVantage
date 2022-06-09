@@ -14,6 +14,9 @@ from fastapi.responses import Response
 from tasks import update_address_coord
 from fastapi.encoders import jsonable_encoder
 from geopy.distance import geodesic
+import logging
+
+logging.basicConfig(filename="debug.log",filemode='a',format='%(asctime)s %(levelname)s-%(message)s',datefmt='%Y-%m-%d %H:%M:%S')
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -38,6 +41,7 @@ async def create_user_(user: UserRequest, db: Session = Depends(get_db)):
     mail = user.email
     db_user = get_user_by_email(db, email=mail)
     if db_user.count():
+        logging.error('Email already exists')
         raise HTTPException(status_code=400, detail="Email '{}' already registered".format(mail))
     return create_user(db=db, user=user)
 
@@ -56,6 +60,7 @@ async def update_user_(tasks:BackgroundTasks, user: UserUpdate, user_id: int, db
         db.commit()
         db.refresh(db_user)
         return jsonable_encoder(db_user)
+    logging.warning('No User Data Found')
     raise HTTPException(status_code=404, detail="No User Data Found")
 
 # Deleting User object
@@ -66,6 +71,7 @@ async def delete_user_(user_id: int, db: Session = Depends(get_db)):
         db_user = db_user.first()
         delete_user_by_id(db,db_user)
         return Response(status_code=204)
+    logging.warning('No User Data Found')
     raise HTTPException(status_code=404, detail="No User Data Found")
 
 # Deleting Address Objects using distance parameter
@@ -83,4 +89,5 @@ async def get_users(distance: int=0, lat: float=0.0,long:float=0.0,db: Session =
             return near_locations
         else:
             return db_users
+    logging.warning('No User Data Found')
     raise HTTPException(status_code=404, detail="No User Data Found")
